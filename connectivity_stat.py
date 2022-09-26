@@ -51,89 +51,104 @@ label_names = [label.name for label in labels]
 ############## avereging with including feedback type ###################
 for subj in subjects:
     for t in trial_type:
-        emp= np.empty((0,68,68))
-        for fb in feedback:
-            
-            for r in rounds:
-                try:
+        emp1= np.empty([0,68,68])
+        
+        for r in rounds:
+            try:
                 
-                    x_pos = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900/{0}_run{1}_{2}_fb_cur_positive.netcdf'.format(subj,r,t),engine ="netcdf4")
-                    v_pos= xarray.Dataset.to_array(x_pos) # make array to convert to numpy
+                x_pos = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900/{0}_run{1}_{2}_fb_cur_positive.netcdf'.format(subj,r,t),engine ="netcdf4")
+                v_pos= xarray.Dataset.to_array(x_pos) # make array to convert to numpy
                     
-                    con_array_pos = xarray.DataArray.to_numpy(v_pos)
-                    con_array_pos= con_array_pos.reshape(1,68,68)
+                con_array_pos = xarray.DataArray.to_numpy(v_pos)
+                con_array_pos=con_array_pos.reshape(1,68,68)
                 
-                    x_neg = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900/{0}_run{1}_{2}_fb_cur_negative.netcdf'.format(subj,r,t),engine ="netcdf4")
-                    v_neg = xarray.Dataset.to_array(x_neg)
-                    con_array_neg = xarray.DataArray.to_numpy(v_neg)
-                    con_array_neg= con_array_neg.reshape(1,68,68)
+            except (OSError):
                 
-                except (OSError): 
-                    print('This file not exist')
-    
+                print('This file not exist')
+        con_pos = np.vstack([emp1,con_array_pos])    
+        if con_pos.size != 0:
+            positive_fb_mean = con_pos.mean(axis = 0) 
+            panda_df_pos = pd.DataFrame(data = positive_fb_mean, 
+                            index =  label_names,
+                            columns = label_names)
+            xr_pos = panda_df_pos.to_xarray()
+
+        #con_matrix = mne_connectivity.Connectivity(con_with_baseline,freqs, times, n_nodes = con.n_nodes, names=label_names, method=con_methods)
+            xr_pos.to_netcdf("/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_{1}_fb_cur_positive.netcdf".format(subj,t),mode='w')
+        else:
             
-        con_pos = np.vstack([emp, con_array_pos])
-        con_mean_pos=con_pos.mean(axis=0)
-        panda_df_pos = pd.DataFrame(data = con_mean_pos, 
-                                index =  label_names,
-                                columns = label_names)
-        xr_pos = panda_df_pos.to_xarray()
+            print('Subject has no positive feedbacks on this condition')
+        emp2= np.empty((0,68,68))
+        for r in rounds:
+            try:
+                x_neg = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900/{0}_run{1}_{2}_fb_cur_negative.netcdf'.format(subj,r,t),engine ="netcdf4")
+                v_neg = xarray.Dataset.to_array(x_neg)
+                con_array_neg = xarray.DataArray.to_numpy(v_neg)
+                con_array_neg=con_array_neg.reshape(1,68,68)
+                
+            except (OSError): 
+                print('This file not exist')
+        con_neg = np.vstack([emp2,con_array_neg])       
+        if con_neg.size != 0:
+            negative_fb_mean = con_neg.mean(axis = 0) 
+
+            panda_df_neg = pd.DataFrame(data = negative_fb_mean, index =  label_names,
+                                        columns = label_names)
+                                
+            xr_neg = panda_df_neg.to_xarray()
 
         #con_matrix = mne_connectivity.Connectivity(con_with_baseline,freqs, times, n_nodes = con.n_nodes, names=label_names, method=con_methods)
-        xr_pos.to_netcdf("/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_{1}_fb_cur_positive.netcdf".format(subj,t),mode='w')
-        
-        con_neg = np.vstack([emp, con_array_neg])
-        con_mean_neg =con_neg.mean(axis=0)
-        panda_df_neg = pd.DataFrame(data = con_mean_neg, 
-                                index =  label_names,
-                                columns = label_names)
-        xr_neg = panda_df_neg.to_xarray()
-
-        #con_matrix = mne_connectivity.Connectivity(con_with_baseline,freqs, times, n_nodes = con.n_nodes, names=label_names, method=con_methods)
-        xr_neg.to_netcdf("/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_{1}_fb_cur_negative.netcdf".format(subj,t),mode='w')
-        
-
+            xr_neg.to_netcdf("/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_{1}_fb_cur_negative.netcdf".format(subj,t),mode='w')
+        else:
+          print('Subject has no negative feedbacks on this condition')
+       
         
 ########## Ttest ##############
-risk_fb_cur_positive = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/P002_risk_fb_cur_negative.netcdf',engine ="netcdf4")
-
-comp1_per_sub = np.zeros(shape=(len(subjects), 68, 68))
+np.set_printoptions(suppress=True)
+comp1_per_sub = np.zeros(shape=(len(subjects), 68,68))
 comp2_per_sub = np.zeros(shape=(len(subjects), 68,68))
 
 for ind, subj in enumerate(subjects):
-    
-    
-    try:     
-            
+    print(subj)
+    try:
         risk_fb_cur_positive = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_risk_fb_cur_positive.netcdf'.format(subj),engine ="netcdf4")
         risk_fb_cur_positive= xarray.Dataset.to_array(risk_fb_cur_positive)
-        risk_fb_cur_positive = xarray.DataArray.to_numpy(risk_fb_cur_positive)   
-        comp1_per_sub[ind, :, :]= risk_fb_cur_positive
+        risk_fb_cur_positive = xarray.DataArray.to_numpy(risk_fb_cur_positive)
+        risk_fb_cur_positive=np.nan_to_num(risk_fb_cur_positive, nan=1.0)
+    except (OSError):
+        
+        print('This file not exist')
+    print(risk_fb_cur_positive )
+    comp1_per_sub[ind, :, :]= risk_fb_cur_positive
+    try:
             
         risk_fb_cur_negative = xarray.open_dataset('/net/server/data/Archive/prob_learn/pultsinak/connectivity/csd_1500_1900_avg_into_fb/{0}_risk_fb_cur_negative.netcdf'.format(subj),engine ="netcdf4")
         risk_fb_cur_negative= xarray.Dataset.to_array(risk_fb_cur_negative)
         risk_fb_cur_negative = xarray.DataArray.to_numpy(risk_fb_cur_negative)
-        comp2_per_sub[ind, :, :]= risk_fb_cur_negative
-
-    except (OSError): 
-        print('This file not exist')
-    t, pval = stats.ttest_rel(comp2_per_sub, comp1_per_sub,axis=0)
-    print(pval.min(), pval.mean(), pval.max())
-        # t-test condition vs zero 
-    t_pos,pval_pos_fb= stats.ttest_1samp(comp1_per_sub,0, axis=0)
-    t_neg,pval_neg_fb= stats.ttest_1samp(comp2_per_sub,0, axis=0)
+        risk_fb_cur_negative=np.nan_to_num(risk_fb_cur_negative, nan=1.0)
+    except (OSError):
         
+        print('This file not exist')
+    comp2_per_sub[ind, :, :]= risk_fb_cur_negative
 
-#replace nan values from pvalue array
-pval_pos_fb = np.nan_to_num(pval_pos_fb, nan=1.0)
+mean_con_pos = comp1_per_sub.mean(axis=0)
+mean_con_neg = comp2_per_sub.mean(axis=0)
+t, pval= group_connectivity_ttest(comp2_per_sub, comp1_per_sub)
 
-data_pval = []
-for p in pval_pos_fb:
-    data = 1 - 10*p
-    data_pval.append(data)
-data_pval = np.array(data_pval)
 
-data_pval[data_pval<0] = 0
+
+def signed_p_val(t, pval):
+    if t >= 0:
+        return 1 - pval
+    else:
+        return -(1 - pval) 
+vect_signed_pval = np.vectorize(signed_p_val)
+p_val_nofdr = vect_signed_pval(t, pval)
+
+print(pval.min(), pval.mean(), pval.max())
+
+
+p_val_nofdr[p_val_nofdr<0.99] = 0
 
 
 
@@ -171,5 +186,12 @@ fig = mne.viz.plot_connectivity_circle(data_pval,label_names,indices=None,n_line
 
 
 fig[0].savefig("/net/server/data/Archive/prob_learn/pultsinak/connectivity/plots/1500_1900_lp_positive_vs_negative_fb.png", facecolor='black')
+
+############## colored brain model ############
+Brain = mne.viz.get_brain_class()
+brain = Brain('fsaverage', 'lh', surf='pial',subjects_dir=subjects_dir,
+              cortex='low_contrast', background='white', size=(800, 600))
+brain.add_annotation('aparc', borders=False) 
+
 
  
