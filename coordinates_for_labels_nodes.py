@@ -23,7 +23,7 @@ my_df.to_csv('/home/pultsinak/Рабочий стол/connectivity/lh_hcp_coord.
 rh_list_coord =tuple()
 for r in rh_list:
     c= r.center_of_mass(subject="fsaverage")
-    cord= mne.vertex_to_mni(c,0,subject="fsaverage")
+    cord= mne.vertex_to_mni(c,1,subject="fsaverage")
     rh_list_coord = rh_list_coord + (cord,)
 
 rh_list_names = [label.name for label in rh_list] 
